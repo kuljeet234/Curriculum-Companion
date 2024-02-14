@@ -5,6 +5,6 @@ you will need to enter your page numbers of the syllabus file then give your fil
 
 ## Requirements
 
-PyPDF2
-AutoModelForSeq2SeqLM
+PyPDF2,
+AutoModelForSeq2SeqLM,
 AutoTokenizer
