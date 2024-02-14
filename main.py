@@ -37,7 +37,7 @@ end_page = 8
 pdf_text = extract_text_from_pdf(pdf_path, start_page, end_page)
 
 
-summarized_text = summarize_text(pdf_text)
+#summarized_text = summarize_text(pdf_text)   to get summarised text
 
 
 playlist_url = search_youtube_playlist(summarized_text)
