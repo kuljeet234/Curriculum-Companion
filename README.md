@@ -8,6 +8,7 @@ This project generates a YouTube playlist from a syllabus file using Miniorca.
    - PyPDF2
    - AutoModelForSeq2SeqLM
    - AutoTokenizer
+   - orca_mini_3b
 
 2. **Usage:**
    - Enter the page numbers of the syllabus file.
