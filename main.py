@@ -47,7 +47,7 @@ def extract_text_from_pdf(pdf_path, start_page, end_page):
             pdf_text += page.extract_text()
     return pdf_text
 
-pdf_path = '/AI2204_course handout_Automata.pdf'
+pdf_path = 'your path'
 start_page = 2
 end_page = -2  
 
