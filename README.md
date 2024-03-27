@@ -1,10 +1,17 @@
 # Curriculum Companion
 
-this project takes input of a syllabus file through path and gives youtube playlist for your subject
-you will need to enter your page numbers of the syllabus file then give your file path and run the program and you will get the playlist
+This project generates a YouTube playlist from a syllabus file using Miniorca.
 
-## Requirements
+## How to Use
 
-PyPDF2,
-AutoModelForSeq2SeqLM,
-AutoTokenizer
+1. **Requirements:** Install the following packages:
+   - PyPDF2
+   - AutoModelForSeq2SeqLM
+   - AutoTokenizer
+
+2. **Usage:**
+   - Enter the page numbers of the syllabus file.
+   - Provide the file path.
+   - Run the program to get the playlist.
+
+Enjoy your curated playlist based on your syllabus!
