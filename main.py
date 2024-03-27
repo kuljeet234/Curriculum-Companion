@@ -49,7 +49,7 @@ def extract_text_from_pdf(pdf_path, start_page, end_page):
 
 pdf_path = '/AI2204_course handout_Automata.pdf'
 start_page = 2
-end_page = -2  # Second last page
+end_page = -2  
 
 course_info = extract_text_from_pdf(pdf_path, start_page, end_page)
 
@@ -58,7 +58,7 @@ instruction = '''
 i am giving you is a course handout and i want you to pick 10 words and these 10 words should be the most important topics from this course handout these 10 words should cover all the topics and these 10 words should be completely covering the topic you are only supposed to give the 10 words nothing else  you should also avoid putting anything else by yourself afterwards search these words on youtube and give me the links- 
 ''' + course_info
 
-generated_text = generate_text(system, instruction)  # Assuming generate_text returns the text you mentioned
+generated_text = generate_text(system, instruction)  
 
 lines = generated_text.split('\n')
 important_topics = [line for line in lines if line.startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '10.'))]
