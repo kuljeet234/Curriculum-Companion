@@ -15,4 +15,4 @@ This project generates a YouTube playlist from a syllabus file using Miniorca.
    - Provide the file path.
    - Run the program to get the playlist.
 
-Enjoy your curated playlist based on your syllabus!
+Enjoy your curated youtube playlist based on your syllabus!
