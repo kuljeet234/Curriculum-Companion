@@ -53,8 +53,11 @@ def extract_text_from_pdf(pdf_path, start_page, end_page):
     text = ""
     with open(pdf_path, "rb") as file:
         reader = PdfReader(file)
-        last = end_page if end_page >= 0 else len(reader.pages) + end_page
-        for i in range(start_page, last + 1):
+        total = len(reader.pages)
+        last = end_page if end_page >= 0 else total + end_page
+        last = max(0, min(last, total - 1))
+        first = max(0, min(start_page, total - 1))
+        for i in range(first, last + 1):
             text += reader.pages[i].extract_text() or ""
     return text
 
