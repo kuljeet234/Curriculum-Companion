@@ -1,12 +1,17 @@
 import argparse
 import torch
 from accelerate import Accelerator
-from transformers import LlamaForCausalLM, LlamaTokenizer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from youtube_search import YoutubeSearch
 from PyPDF2 import PdfReader
 
 
-DEFAULT_MODEL = "psmathur/orca_mini_3b"
+# Phi-3-mini-4k-instruct (3.8B, 4k context, ungated) replaces the
+# original orca_mini_3b (Llama-1-based, 2023). It uses standard
+# Auto* classes and a chat template, so swapping to another current
+# model — Qwen2.5-3B-Instruct, Llama-3.2-3B-Instruct, etc. — is a
+# one-line override via --model.
+DEFAULT_MODEL = "microsoft/Phi-3-mini-4k-instruct"
 TOPIC_PREFIXES = tuple(f"{i}." for i in range(1, 11))
 
 
@@ -19,34 +24,51 @@ def pick_device():
 
 
 def load_model(model_path):
-    tokenizer = LlamaTokenizer.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
     device, dtype = pick_device()
     Accelerator()  # initialise; harmless on CPU
-    model = LlamaForCausalLM.from_pretrained(model_path, torch_dtype=dtype)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=dtype,
+        trust_remote_code=True,
+    )
     model = model.to(device)
     return tokenizer, model, device
 
 
-def generate_text(tokenizer, model, system, instruction, input_text=None, max_new_tokens=1024):
-    if input_text:
-        prompt = f"### System:\n{system}\n\n### User:\n{instruction}\n\n### Input:\n{input_text}\n\n### Response:\n"
-    else:
-        prompt = f"### System:\n{system}\n\n### User:\n{instruction}\n\n### Response:\n"
+def generate_text(tokenizer, model, system, instruction, max_new_tokens=512):
+    """Run an instruction through the tokenizer's chat template.
 
-    tokens = tokenizer.encode(prompt)
-    tokens = torch.LongTensor(tokens).unsqueeze(0).to(model.device)
+    Modern instruct models ship a `chat_template` that knows how to
+    wrap system/user messages correctly — using it directly avoids
+    the orca-specific `### System:` prompt format the old script
+    relied on.
+    """
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": instruction},
+    ]
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        add_generation_prompt=True,
+        return_tensors="pt",
+    ).to(model.device)
+    attention_mask = torch.ones_like(inputs)
 
     with torch.no_grad():
         out = model.generate(
-            input_ids=tokens,
-            max_length=tokens.shape[1] + max_new_tokens,
-            use_cache=True,
+            input_ids=inputs,
+            attention_mask=attention_mask,
+            max_new_tokens=max_new_tokens,
             do_sample=True,
-            top_p=1.0,
+            top_p=0.9,
             temperature=0.7,
             top_k=50,
+            pad_token_id=tokenizer.pad_token_id,
         )
-    return tokenizer.decode(out[0][tokens.shape[1]:], skip_special_tokens=True)
+    return tokenizer.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
 
 
 def extract_text_from_pdf(pdf_path, start_page, end_page):
@@ -74,17 +96,18 @@ def main():
     args = parser.parse_args()
 
     tokenizer, model, device = load_model(args.model)
-    print(f"Model loaded on {device}")
+    print(f"Model {args.model} loaded on {device}")
 
     course_info = extract_text_from_pdf(args.pdf_path, args.start_page, args.end_page)
 
-    system = "You are an AI expert in the field of education that follows instruction extremely well. Help as much as you can."
+    system = (
+        "You are an education expert. Given a course handout, extract the "
+        "10 most important topics. Output exactly 10 lines, each starting "
+        "with a number and a dot (e.g. '1. Topic name'). Output nothing else."
+    )
     instruction = (
-        "i am giving you is a course handout and i want you to pick 10 words and these 10 words "
-        "should be the most important topics from this course handout these 10 words should cover "
-        "all the topics and these 10 words should be completely covering the topic you are only "
-        "supposed to give the 10 words nothing else  you should also avoid putting anything else "
-        "by yourself afterwards search these words on youtube and give me the links- \n" + course_info
+        "Extract the 10 most important topics from this course handout:\n\n"
+        + course_info
     )
 
     raw = generate_text(tokenizer, model, system, instruction)
