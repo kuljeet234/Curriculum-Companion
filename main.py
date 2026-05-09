@@ -1,6 +1,6 @@
 import argparse
+import sys
 import torch
-from accelerate import Accelerator
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from youtube_search import YoutubeSearch
 from PyPDF2 import PdfReader
@@ -28,7 +28,6 @@ def load_model(model_path):
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
     device, dtype = pick_device()
-    Accelerator()  # initialise; harmless on CPU
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         torch_dtype=dtype,
@@ -44,7 +43,9 @@ def generate_text(tokenizer, model, system, instruction, max_new_tokens=512):
     Modern instruct models ship a `chat_template` that knows how to
     wrap system/user messages correctly — using it directly avoids
     the orca-specific `### System:` prompt format the old script
-    relied on.
+    relied on. Decoding is greedy (do_sample=False) because the prompt
+    asks for a fixed-format numbered list — sampling produced variable
+    topic counts run-to-run.
     """
     messages = [
         {"role": "system", "content": system},
@@ -62,10 +63,7 @@ def generate_text(tokenizer, model, system, instruction, max_new_tokens=512):
             input_ids=inputs,
             attention_mask=attention_mask,
             max_new_tokens=max_new_tokens,
-            do_sample=True,
-            top_p=0.9,
-            temperature=0.7,
-            top_k=50,
+            do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
         )
     return tokenizer.decode(out[0][inputs.shape[1]:], skip_special_tokens=True)
@@ -95,10 +93,16 @@ def main():
     parser.add_argument("--model", default=DEFAULT_MODEL)
     args = parser.parse_args()
 
+    course_info = extract_text_from_pdf(args.pdf_path, args.start_page, args.end_page).strip()
+    if not course_info:
+        sys.exit(
+            f"\nNo text was extracted from {args.pdf_path} between pages "
+            f"{args.start_page} and {args.end_page}. Adjust --start-page / "
+            "--end-page or pass a PDF that actually contains selectable text."
+        )
+
     tokenizer, model, device = load_model(args.model)
     print(f"Model {args.model} loaded on {device}")
-
-    course_info = extract_text_from_pdf(args.pdf_path, args.start_page, args.end_page)
 
     system = (
         "You are an education expert. Given a course handout, extract the "
